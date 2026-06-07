@@ -1457,7 +1457,8 @@ function exportCSV(){
   const {year:y,month:m}=state;
   const holidays=japaneseHolidays(y);
   const dim=new Date(y,m,0).getDate();
-  let rows=[['日付','曜日','祝日/区分','早番','中番','遅番']];
+  // 既存6列は変更せず、末尾に「日種別」と各区分の詳細コード（早C/早E など）を追加（別アプリ連携用）
+  let rows=[['日付','曜日','祝日/区分','早番','中番','遅番','日種別','早番詳細','中番詳細','遅番詳細']];
   for(let d=1;d<=dim;d++){
     const wd=new Date(y,m-1,d).getDay();
     const k=dkey(y,m,d);
@@ -1466,7 +1467,10 @@ function exportCSV(){
     let note = sp==='closed' ? '臨時休業' : sp==='open' ? '特別営業' : (!open ? '定休' : (holidays[k]||''));
     const a=state.assignments[k]||{};
     const nm=key=> open ? (a[key]||[]).map(id=>{const s=staffById(id);return s?s.name:'';}).join(' / ') : '';
-    rows.push([`${y}/${m}/${d}`, WD[wd], note, nm('early'), nm('mid'), nm('late')]);
+    const isWH=isWeekendHoliday(y,m,d,holidays);
+    const typ = isWH ? '土日祝' : '平日';
+    const det=key=> (open && (a[key]||[]).length) ? (SHIFTS.find(s=>s.key===key).short + shiftCode(key,isWH)) : '';
+    rows.push([`${y}/${m}/${d}`, WD[wd], note, nm('early'), nm('mid'), nm('late'), typ, det('early'), det('mid'), det('late')]);
   }
   const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv'});
